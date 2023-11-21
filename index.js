@@ -11,7 +11,7 @@ app.use(express.json());
 
 // **************************** MongoDB Connection Start *****************************
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri =
 	`mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ea4znei.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -32,9 +32,24 @@ async function run() {
         const database = client.db("bistroDB");
         const menuCollection = database.collection("menus");
         const reviewCollection = database.collection("reviews");
+		const cartCollection = database.collection("carts");
+		const userCollection = database.collection("users");
 
         
         // ****************** Data Base Operation Start ****************
+
+		//create user
+		app.post('/users',async(req,res) => {
+			const user = req.body;
+			const query = {email:user.email}
+			const isUserExist  = await userCollection.findOne(query);
+			if(isUserExist)
+			{
+				return res.send({message:"User Already Exist", insertedId : null})
+			}
+			const result = await userCollection.insertOne(user);
+			res.send(result);
+		})
 
         //get all kind of menus
         app.get('/menus',async(req,res) => {
@@ -48,6 +63,28 @@ async function run() {
             const result = await cursor.toArray();
             res.send(result);
         });
+
+		// add cart data to data of a specific user
+		app.post('/carts', async(req,res) => {
+			const newCart = req.body;
+			const result = await cartCollection.insertOne(newCart);
+			res.send(result);
+		});
+		//get users cart data
+		app.get('/carts', async(req,res) => {
+			const email = req.query.email;
+			const query = {userEmail:email} 
+			const cursor = cartCollection.find(query);
+			const result = await cursor.toArray();
+			res.send(result);
+		})
+		//delete specific user cart data
+		app.delete('/carts/:id',async(req,res) => {
+			const id =  req.params.id;
+			const query = {_id: new ObjectId(id)};
+			const result = await cartCollection.deleteOne(query);
+			res.send(result);
+		});
 
 
         // ****************** Data Base Operation End ****************
